@@ -4,7 +4,8 @@ interface
 
 uses
   System.SysUtils,
-  Xml.XMLIntf;
+  Xml.XMLIntf,
+  XML.FlatParser.Types;
 
 type
   IXMLFlatParser = interface
@@ -15,9 +16,9 @@ type
   /// </summary>
   procedure FlatParseXML(const Path: string; const BlockName: string);
 
-  procedure SetOnParsedBlock(const OnParsedBlock: TProc<IXMLDocument>);
+  procedure SetOnParsedBlock(const OnParsedBlock: TProc<TAddress>);
 
-  property OnParsedBlock: TProc<IXMLDocument> write SetOnParsedBlock;
+  property OnParsedBlock: TProc<TAddress> write SetOnParsedBlock;
   end;
 
 implementation

@@ -29,7 +29,9 @@ implementation
 uses
   System.Diagnostics,
   XML.FlatParser,
-  XML.FlatParser.Interfaces;
+  XML.FlatParser.Interfaces,
+  Xml.XMLIntf,
+  XML.FlatParser.Types;
 
 {$R *.dfm}
 
@@ -38,9 +40,18 @@ const
   BUFF_SIZE = 64 * 1024;
   DELIM = '</tns:address>';
 begin
+  FormatSettings.DecimalSeparator := '.';
+
   var StopWatch := TStopwatch.StartNew;
 
   var XMLFlatParser: IXMLFlatParser := TXMLFlatParser.Create;
+
+  XMLFlatParser.OnParsedBlock := (
+    procedure(ParsedBlock: TAddress)
+    begin
+    end
+  );
+
   XMLFlatParser.FlatParseXML(FLANDERS_ADDRESS, 'tns:address');
 
   StopWatch.Stop;
