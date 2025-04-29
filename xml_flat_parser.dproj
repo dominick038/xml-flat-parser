@@ -135,6 +135,7 @@
         </DCCReference>
         <DCCReference Include="XML.FlatParser.pas"/>
         <DCCReference Include="XML.FlatParser.Interfaces.pas"/>
+        <DCCReference Include="XML.FlatParser.Types.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

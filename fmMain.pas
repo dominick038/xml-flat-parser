@@ -49,6 +49,7 @@ begin
   XMLFlatParser.OnParsedBlock := (
     procedure(ParsedBlock: TAddress)
     begin
+      var X := ParsedBlock.HouseNumber;
     end
   );
 

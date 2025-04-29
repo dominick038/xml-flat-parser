@@ -5,18 +5,18 @@ interface
 type
 
   TAddress = record
-  X: Double;
-  Y: Double;
-  HouseNumber: string;
-  StreetNameId: Integer;
-  MunicipalityId: Integer;
-  PostalInfoId: Integer;
+    X: Double;
+    Y: Double;
+    HouseNumber: string;
+    StreetNameId: Integer;
+    MunicipalityId: Integer;
+    PostalInfoId: Integer;
 
-  constructor Create(const XY: string;
-                     const HouseNumber: string;
-                     const StreetNameId: string;
-                     const MunicipalityId: string;
-                     const PostalInfoId: string);
+    constructor Create(const XY: string;
+                       const HouseNumber: string;
+                       const StreetNameId: string;
+                       const MunicipalityId: string;
+                       const PostalInfoId: string);
   end;
 
 implementation
