@@ -16,6 +16,9 @@ type
   private
 
   const FLANDERS_ADDRESS = '.\FlandersAddress.xml';
+  const FLANDERS_STREETNAME = '.\FlandersStreetName.xml';
+  const FLANDERS_POSTAL_INFO = '.\FlandersPostalInfo.xml';
+  const FLANDERS_MUNICIPALITY = '.\FlandersMunicipality.xml';
     { Private declarations }
   public
     { Public declarations }
@@ -36,24 +39,62 @@ uses
 {$R *.dfm}
 
 procedure Tfm_Main.btnTryFlatParseClick(Sender: TObject);
-const
-  BUFF_SIZE = 64 * 1024;
-  DELIM = '</tns:address>';
 begin
   FormatSettings.DecimalSeparator := '.';
 
   var StopWatch := TStopwatch.StartNew;
 
-  var XMLFlatParser: IXMLFlatParser := TXMLFlatParser.Create;
+  var XMLPostalInfoParser := TXMLFlatParser<TPostalInfo>.Create;
+  try
+    XMLPostalInfoParser.OnParsedBlock := (
+      procedure(ParsedBlock: TPostalInfo)
+      begin
+        var X := ParsedBlock.Id;
+      end
+    );
+    XMLPostalInfoParser.FlatParseXML(FLANDERS_POSTAL_INFO, 'tns:postalInfo');
+  finally
+    XMLPostalInfoParser.Free;
+  end;
 
-  XMLFlatParser.OnParsedBlock := (
-    procedure(ParsedBlock: TAddress)
-    begin
-      var X := ParsedBlock.HouseNumber;
-    end
-  );
+  var XMLStreetNameParser := TXMLFlatParser<TPostalInfo>.Create;
+  try
+    XMLStreetNameParser.OnParsedBlock := (
+      procedure(ParsedBlock: TPostalInfo)
+      begin
+        var X := ParsedBlock.Id;
+      end
+    );
+    XMLStreetNameParser.FlatParseXML(FLANDERS_STREETNAME, 'tns:streetName');
+  finally
+    XMLStreetNameParser.Free;
+  end;
 
-  XMLFlatParser.FlatParseXML(FLANDERS_ADDRESS, 'tns:address');
+  var XMLMunicipalityParser := TXMLFlatParser<TPostalInfo>.Create;
+  try
+    XMLMunicipalityParser.OnParsedBlock := (
+      procedure(ParsedBlock: TPostalInfo)
+      begin
+        var X := ParsedBlock.Id;
+      end
+    );
+    XMLMunicipalityParser.FlatParseXML(FLANDERS_MUNICIPALITY, 'tns:municipality');
+  finally
+    XMLMunicipalityParser.Free;
+  end;
+
+  var XMLAddressParser := TXMLFlatParser<TAddress>.Create;
+  try
+    XMLAddressParser.OnParsedBlock := (
+      procedure(ParsedBlock: TAddress)
+      begin
+        var X := ParsedBlock.HouseNumber;
+      end
+    );
+    XMLAddressParser.FlatParseXML(FLANDERS_ADDRESS, 'tns:address');
+  finally
+    XMLAddressParser.Free;
+  end;
 
   StopWatch.Stop;
   ShowMessage('Elapsed total seconds: ' + StopWatch.Elapsed.TotalSeconds.ToString);

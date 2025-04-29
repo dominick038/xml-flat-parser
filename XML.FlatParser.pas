@@ -9,19 +9,21 @@ uses
   XML.FlatParser.Types;
 
 type
-  TXMLFlatParser = class(TInterfacedObject, IXMLFlatParser)
+  TXMLFlatParser<T: class, constructor> = class
   private
-    FOnParsedBlock: TProc<TAddress>;
+    FOnParsedBlock: TProc<T>;
 
-    procedure SetOnParsedBlock(const OnParsedBlock: TProc<TAddress>);
+    procedure SetOnParsedBlock(const OnParsedBlock: TProc<T>);
 
-    function  ParseBlock(const Block: string; const Tag: string; const InnerTag: string = ''): string;
+    function  CreateAndPopulate(const Block: string): T;
+    procedure PopulateFromXML(Obj: TObject; const Block: string);
+    function  ParseBlock(const Block: string; const Tag: string): string;
     procedure InternalFlatParseXML(const Path: string; const BlockName: string; const IsAsync: Boolean);
   public
     procedure FlatParseXML(const Path: string; const BlockName: string);
     procedure FlatParseXMLAsync(const Path: string; const BlockName: string);
 
-    property OnParsedBlock: TProc<TAddress> write SetOnParsedBlock;
+    property OnParsedBlock: TProc<T> write SetOnParsedBlock;
   end;
 
 implementation
@@ -31,11 +33,44 @@ uses
   System.Classes,
   System.UITypes,
   System.Threading,
-  System.StrUtils;
+  System.StrUtils,
+  System.Rtti,
+  System.TypInfo;
 
 { TXMLFlatParser }
 
-procedure TXMLFlatParser.InternalFlatParseXML(const Path, BlockName: string; const IsAsync: Boolean);
+procedure TXMLFlatParser<T>.SetOnParsedBlock(const OnParsedBlock: TProc<T>);
+begin
+  FOnParsedBlock := OnParsedBlock;
+end;
+
+procedure TXMLFlatParser<T>.FlatParseXML(const Path: string; const BlockName: string);
+begin
+  if not Assigned(FOnParsedBlock) then
+  begin
+    MessageDlg('No OnParsedBlock function assigned, nothing will happen with the output!', TMsgDlgType.mtWarning, [TMsgDlgBtn.mbOK], 0);
+    Exit;
+  end;
+
+  InternalFlatParseXML(Path, BlockName, False);
+end;
+
+procedure TXMLFlatParser<T>.FlatParseXMLAsync(const Path, BlockName: string);
+begin
+  if not Assigned(FOnParsedBlock) then
+  begin
+    MessageDlg('No OnParsedBlock function assigned, nothing will happen with the output!', TMsgDlgType.mtWarning, [TMsgDlgBtn.mbOK], 0);
+    Exit;
+  end;
+
+  TTask.Run(
+    procedure
+    begin
+      InternalFlatParseXML(Path, BlockName, True);
+    end)
+end;
+
+procedure TXMLFlatParser<T>.InternalFlatParseXML(const Path, BlockName: string; const IsAsync: Boolean);
 const
   BUFF_SIZE = 64 * 1024;
 begin
@@ -75,14 +110,8 @@ begin
           var Block := Copy(Buffer, 1, Position + Length(EndBlock) - 1);
           Delete(Buffer, 1, Position + Length(EndBlock) - 1);
 
-          var XY := ParseBlock(Block, 'pos ');
-          var HouseNumber := ParseBlock(Block, 'houseNumber');
-          var StreetNameId := ParseBlock(Block, 'hasStreetName', 'objectIdentifier');
-          var MunicipalityId := ParseBlock(Block, 'hasMunicipality', 'objectIdentifier');
-          var PostalInfoId := ParseBlock(Block, 'hasPostalInfo', 'objectIdentifier');
-
-          var ParsedBlock := TAddress.Create(XY, HouseNumber, StreetNameId, MunicipalityId, PostalInfoId);
-          FOnParsedBlock(ParsedBlock);
+          var Obj := CreateAndPopulate(Block);
+          FOnParsedBlock(Obj);
         end;
       until Position = 0;
     end;
@@ -92,7 +121,7 @@ begin
   end;
 end;
 
-function TXMLFlatParser.ParseBlock(const Block: string; const Tag: string; const InnerTag: string): string;
+function TXMLFlatParser<T>.ParseBlock(const Block: string; const Tag: string): string;
 begin
   var StartTag := '<com:' + Tag;
   var EndTag := '</com:' + Tag.Trim + '>';
@@ -110,40 +139,37 @@ begin
     raise Exception.Create('Closing tag not found');
 
   Result := Copy(Block, SPos, EPos - SPos);
-
-  if InnerTag <> string.Empty then
-    Result := ParseBlock(Result, InnerTag);
 end;
 
-procedure TXMLFlatParser.FlatParseXML(const Path: string; const BlockName: string);
+function TXMLFlatParser<T>.CreateAndPopulate(const Block: string): T;
 begin
-  if not Assigned(FOnParsedBlock) then
-  begin
-    MessageDlg('No OnParsedBlock function assigned, nothing will happen with the output!', TMsgDlgType.mtWarning, [TMsgDlgBtn.mbOK], 0);
-    Exit;
-  end;
-
-  InternalFlatParseXML(Path, BlockName, False);
+  Result := T.Create;
+  PopulateFromXML(Result, Block);
 end;
 
-procedure TXMLFlatParser.FlatParseXMLAsync(const Path, BlockName: string);
+procedure TXMLFlatParser<T>.PopulateFromXML(Obj: TObject; const Block: string);
 begin
-  if not Assigned(FOnParsedBlock) then
+  var RttiContext: TRttiContext;
+  var RttiType := RttiContext.GetType(Obj.ClassType);
+  for var Prop in RttiType.GetProperties do
   begin
-    MessageDlg('No OnParsedBlock function assigned, nothing will happen with the output!', TMsgDlgType.mtWarning, [TMsgDlgBtn.mbOK], 0);
-    Exit;
-  end;
-
-  TTask.Run(
-    procedure
+    for var Attr in Prop.GetAttributes do
     begin
-      InternalFlatParseXML(Path, BlockName, True);
-    end)
-end;
+      if Attr is ParseElementAttribute then
+      begin
+        var ParseElement := Attr as ParseElementAttribute;
+        var SubBlock := Block;
+        for var i := Low(ParseElement.Chain) to High(ParseElement.Chain) do
+          SubBlock := ParseBlock(SubBlock, ParseElement.Chain[i]);
+        var Value := SubBlock;
 
-procedure TXMLFlatParser.SetOnParsedBlock(const OnParsedBlock: TProc<TAddress>);
-begin
-  FOnParsedBlock := OnParsedBlock;
+        if (Prop.PropertyType.Handle = TypeInfo(string)) or (Prop.PropertyType.Handle = TypeInfo(ShortString)) then
+          Prop.SetValue(Obj, Value)
+        else if Prop.PropertyType.Handle = TypeInfo(Integer) then
+          Prop.SetValue(Obj, StrToIntDef(Value, 0));
+      end;
+    end;
+  end;
 end;
 
 end.

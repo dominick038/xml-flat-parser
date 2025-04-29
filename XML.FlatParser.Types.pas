@@ -3,20 +3,85 @@ unit XML.FlatParser.Types;
 interface
 
 type
+  ParseElementAttribute = class(TCustomAttribute)
+  private
+    FChain: TArray<string>;
+  public
+    constructor Create(const Chain: string);
+    property Chain: TArray<string> read FChain;
+  end;
 
-  TAddress = record
-    X: Double;
-    Y: Double;
-    HouseNumber: string;
-    StreetNameId: Integer;
-    MunicipalityId: Integer;
-    PostalInfoId: Integer;
+  TAddress = class
+  private
+    FXY: string;
+    FHouseNumber: ShortString;
+    FStreetNameId: Integer;
+    FMunicipalityId: Integer;
+    FPostalInfoId: Integer;
+  public
 
-    constructor Create(const XY: string;
-                       const HouseNumber: string;
-                       const StreetNameId: string;
-                       const MunicipalityId: string;
-                       const PostalInfoId: string);
+    [ParseElement('pos ')]
+    property XY: string read FXY write FXY;
+
+    [ParseElement('houseNumber')]
+    property HouseNumber: ShortString read FHouseNumber write FHouseNumber;
+
+    [ParseElement('hasStreetName->objectIdentifier')]
+    property StreetNameId: Integer read FStreetNameId write FStreetNameId;
+
+    [ParseElement('hasMunicipality->objectIdentifier')]
+    property MunicipalityId: Integer read FMunicipalityId write FMunicipalityId;
+
+    [ParseElement('hasPostalInfo->objectIdentifier')]
+    property PostalInfoId: Integer read FPostalInfoId write FPostalInfoId;
+  end;
+
+  TPostalInfo = class
+  private
+    FId: integer;
+    FSpelling: string;
+    FLanguage: string;
+  public
+    [ParseElement('code->objectIdentifier')]
+    property Id: Integer read FId write FId;
+
+    [ParseElement('name->spelling')]
+    property Spelling: string read FSpelling write FSpelling;
+
+    [ParseElement('name->language')]
+    property Language: string read FLanguage write FLanguage;
+  end;
+
+  TMunicipality = class
+  private
+    FId: integer;
+    FSpelling: string;
+    FLanguage: string;
+  public
+    [ParseElement('code->objectIdentifier')]
+    property Id: Integer read FId write FId;
+
+    [ParseElement('name->spelling')]
+    property Spelling: string read FSpelling write FSpelling;
+
+    [ParseElement('name->language')]
+    property Language: string read FLanguage write FLanguage;
+  end;
+
+  TStreetName = class
+  private
+    FId: integer;
+    FSpelling: string;
+    FLanguage: string;
+  public
+    [ParseElement('code->objectIdentifier')]
+    property Id: Integer read FId write FId;
+
+    [ParseElement('name->spelling')]
+    property Spelling: string read FSpelling write FSpelling;
+
+    [ParseElement('name->language')]
+    property Language: string read FLanguage write FLanguage;
   end;
 
 implementation
@@ -24,18 +89,11 @@ implementation
 uses
   System.SysUtils;
 
-{ TAddress }
+{ ParseElementAttribute }
 
-constructor TAddress.Create(const XY, HouseNumber, StreetNameId, MunicipalityId, PostalInfoId: string);
+constructor ParseElementAttribute.Create(const Chain: string);
 begin
-  var XYArr := XY.Split([' ']);
-  Self.X := StrToFloat(XYArr[0]);
-  Self.Y := StrToFloat(XYArr[1]);
-
-  Self.HouseNumber := HouseNumber;
-  Self.StreetNameId := StrToInt(StreetNameId);
-  Self.MunicipalityId := strToInt(MunicipalityId);
-  Self.PostalInfoId := StrToInt(PostalInfoId);
+  FChain := Chain.Split(['->']);
 end;
 
 end.
