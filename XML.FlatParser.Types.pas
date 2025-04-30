@@ -11,6 +11,11 @@ type
     property Chain: TArray<string> read FChain;
   end;
 
+  TNameRecord = record
+    Spelling: string;
+    Language: string;
+  end;
+
   TAddress = class
   private
     FXY: string;
@@ -39,49 +44,37 @@ type
   TPostalInfo = class
   private
     FId: integer;
-    FSpelling: string;
-    FLanguage: string;
+    FNames: TArray<TNameRecord>;
   public
     [ParseElement('code->objectIdentifier')]
     property Id: Integer read FId write FId;
 
-    [ParseElement('name->spelling')]
-    property Spelling: string read FSpelling write FSpelling;
-
-    [ParseElement('name->language')]
-    property Language: string read FLanguage write FLanguage;
+    [ParseElement('name')]
+    property Names: TArray<TNameRecord> read FNames write FNames;
   end;
 
   TMunicipality = class
   private
     FId: integer;
-    FSpelling: string;
-    FLanguage: string;
+    FNames: TArray<TNameRecord>;
   public
     [ParseElement('code->objectIdentifier')]
     property Id: Integer read FId write FId;
 
-    [ParseElement('name->spelling')]
-    property Spelling: string read FSpelling write FSpelling;
-
-    [ParseElement('name->language')]
-    property Language: string read FLanguage write FLanguage;
+    [ParseElement('name')]
+    property Names: TArray<TNameRecord> read FNames write FNames;
   end;
 
   TStreetName = class
   private
     FId: integer;
-    FSpelling: string;
-    FLanguage: string;
+    FNames: TArray<TNameRecord>;
   public
     [ParseElement('code->objectIdentifier')]
     property Id: Integer read FId write FId;
 
-    [ParseElement('name->spelling')]
-    property Spelling: string read FSpelling write FSpelling;
-
-    [ParseElement('name->language')]
-    property Language: string read FLanguage write FLanguage;
+    [ParseElement('name')]
+    property Names: TArray<TNameRecord> read FNames write FNames;
   end;
 
 implementation

@@ -32,7 +32,6 @@ implementation
 uses
   System.Diagnostics,
   XML.FlatParser,
-  XML.FlatParser.Interfaces,
   Xml.XMLIntf,
   XML.FlatParser.Types;
 
@@ -49,7 +48,7 @@ begin
     XMLPostalInfoParser.OnParsedBlock := (
       procedure(ParsedBlock: TPostalInfo)
       begin
-        var X := ParsedBlock.Id;
+        var X := ParsedBlock.Names;
       end
     );
     XMLPostalInfoParser.FlatParseXML(FLANDERS_POSTAL_INFO, 'tns:postalInfo');
@@ -57,10 +56,10 @@ begin
     XMLPostalInfoParser.Free;
   end;
 
-  var XMLStreetNameParser := TXMLFlatParser<TPostalInfo>.Create;
+  var XMLStreetNameParser := TXMLFlatParser<TStreetName>.Create;
   try
     XMLStreetNameParser.OnParsedBlock := (
-      procedure(ParsedBlock: TPostalInfo)
+      procedure(ParsedBlock: TStreetName)
       begin
         var X := ParsedBlock.Id;
       end
@@ -82,7 +81,7 @@ begin
   finally
     XMLMunicipalityParser.Free;
   end;
-
+//
   var XMLAddressParser := TXMLFlatParser<TAddress>.Create;
   try
     XMLAddressParser.OnParsedBlock := (

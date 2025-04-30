@@ -18,6 +18,7 @@ type
     function  CreateAndPopulate(const Block: string): T;
     procedure PopulateFromXML(Obj: TObject; const Block: string);
     function  ParseBlock(const Block: string; const Tag: string): string;
+    function  ParseBlockArray(const Block: string; const Tag: string): TArray<string>;
     procedure InternalFlatParseXML(const Path: string; const BlockName: string; const IsAsync: Boolean);
   public
     procedure FlatParseXML(const Path: string; const BlockName: string);
@@ -111,7 +112,11 @@ begin
           Delete(Buffer, 1, Position + Length(EndBlock) - 1);
 
           var Obj := CreateAndPopulate(Block);
-          FOnParsedBlock(Obj);
+          try
+            FOnParsedBlock(Obj);
+          finally
+            Obj.Free;
+          end;
         end;
       until Position = 0;
     end;
@@ -141,6 +146,29 @@ begin
   Result := Copy(Block, SPos, EPos - SPos);
 end;
 
+function TXMLFlatParser<T>.ParseBlockArray(const Block: string; const Tag: string): TArray<string>;
+begin
+  var StartTag := '<com:' + Tag + '>';
+  var EndTag   := '</com:' + Tag + '>';
+  var Blocks := TStringList.Create;
+  try
+    var PosStart := Pos(StartTag, Block);
+    while PosStart > 0 do
+    begin
+      var PosEnd := PosEx(EndTag, Block, PosStart) + Length(EndTag) - 1;
+      if PosEnd <= 0 then
+        Break;
+
+      var BlockXML := Copy(Block, PosStart, PosEnd - PosStart + 1);
+      Blocks.Add(BlockXML);
+      PosStart := PosEx(StartTag, Block, PosEnd);
+    end;
+    Result := Blocks.ToStringArray;
+  finally
+    Blocks.Free;
+  end;
+end;
+
 function TXMLFlatParser<T>.CreateAndPopulate(const Block: string): T;
 begin
   Result := T.Create;
@@ -158,15 +186,34 @@ begin
       if Attr is ParseElementAttribute then
       begin
         var ParseElement := Attr as ParseElementAttribute;
-        var SubBlock := Block;
-        for var i := Low(ParseElement.Chain) to High(ParseElement.Chain) do
-          SubBlock := ParseBlock(SubBlock, ParseElement.Chain[i]);
-        var Value := SubBlock;
 
-        if (Prop.PropertyType.Handle = TypeInfo(string)) or (Prop.PropertyType.Handle = TypeInfo(ShortString)) then
-          Prop.SetValue(Obj, Value)
-        else if Prop.PropertyType.Handle = TypeInfo(Integer) then
-          Prop.SetValue(Obj, StrToIntDef(Value, 0));
+        var PropType := Prop.PropertyType;
+        var TypeData := GetTypeData(PropType.Handle);
+        if (PropType.TypeKind = tkDynArray) and (TypeData^.elType^ = TypeInfo(TNameRecord)) then
+        begin
+          var Chunks := ParseBlockArray(Block, ParseElement.Chain[0]);
+          var Arr: TArray<TNameRecord>;
+          SetLength(Arr, Length(Chunks));
+          for var i := 0 to High(Chunks) do
+          begin
+            Arr[i].Spelling := ParseBlock(Chunks[i], 'spelling');
+            Arr[i].Language := ParseBlock(Chunks[i], 'language');
+          end;
+
+          Prop.SetValue(Obj, TValue.From<TArray<TNameRecord>>(Arr));
+        end
+        else
+        begin
+          var SubBlock := Block;
+          for var i := Low(ParseElement.Chain) to High(ParseElement.Chain) do
+            SubBlock := ParseBlock(SubBlock, ParseElement.Chain[i]);
+          var Value := SubBlock;
+
+          if (Prop.PropertyType.Handle = TypeInfo(string)) or (Prop.PropertyType.Handle = TypeInfo(ShortString)) then
+            Prop.SetValue(Obj, Value)
+          else if Prop.PropertyType.Handle = TypeInfo(Integer) then
+            Prop.SetValue(Obj, StrToIntDef(Value, 0));
+        end;
       end;
     end;
   end;
